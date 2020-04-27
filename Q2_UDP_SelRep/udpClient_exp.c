@@ -1,3 +1,4 @@
+// Akshit Khanna 2017A7PS0023P
 #include "packet.h"
 
 void pkt_copy(DATA_PKT *pkt1, DATA_PKT *pkt2)
@@ -77,7 +78,6 @@ int main(void)
       
     while(1)
     {
-        printf("************************\n");
         int i = 0;
         int min_seq;
         while(i < BUFSIZE && (send_pkt.size = fread(send_pkt.data, 1, PKT_SIZE, fp)))
@@ -132,15 +132,6 @@ int main(void)
             timeout.tv_sec = TIMEOUT;
             timeout.tv_usec = 0;
 
-            // int k;
-            // for(k =0 ; k < BUFSIZE ; k++)
-            // {
-            //     if(buf_window[k].type != 2)
-            //         break;
-            // }
-            // if(k==BUFSIZE)
-            //     break;
-
             int pkt_ack = select(s+1, &readfds, NULL, NULL, &timeout); 
             if(pkt_ack <= 0)
             {
@@ -186,7 +177,6 @@ int main(void)
             }
             else
             {
-                // TODO : DIFFRENTIATE BETWEEN THE ACKS FROM BOTH THE RELAYS
                 if (recvfrom(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *) &si_other, &slen) == -1)
                 {
                     die("recvfrom()");
@@ -204,9 +194,6 @@ int main(void)
                 printf("|CLIENT    |R         |%-16s|ACK       |%-10s|CLIENT    |%-10s|\n", get_time(), str, relay);    
                 fprintf(log, "|CLIENT    |R         |%-16s|ACK       |%-10s|CLIENT    |%-10s|\n", get_time(), str, relay);    
             
-                // if(recv_pkt.sq_no == last_seq)
-                //     break;
-
                 if(recv_pkt.sq_no == seq)
                 {
                     int tp = 0;
@@ -225,7 +212,6 @@ int main(void)
                     }
                     if(seq > last_seq)
                         break;
-                    // printf("NEW SEQ ***** %d\n", seq);
                     if((send_pkt.size = fread(send_pkt.data, 1, PKT_SIZE, fp)))
                     {
                         send_pkt.data[send_pkt.size] = '\0';

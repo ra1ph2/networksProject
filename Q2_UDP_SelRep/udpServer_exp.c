@@ -1,3 +1,4 @@
+// Akshit Khanna 2017A7PS0023P
 #include "packet.h"
 
 void pkt_copy(DATA_PKT *pkt1, DATA_PKT *pkt2)
@@ -45,7 +46,6 @@ int main(int argc , char *argv[])
         buf_window[k].sq_no = -1;
     }
     
-    //create a UDP socket
     if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
         die("socket");
@@ -54,14 +54,13 @@ int main(int argc , char *argv[])
     FILE *log = fopen("server_log.txt", "w");
 
     FILE *fp = fopen("out.txt", "w");
-    // zero out the structure
+    
     memset((char *) &si_me, 0, sizeof(si_me));
      
     si_me.sin_family = AF_INET;
     si_me.sin_port = htons(PORT_SERVER);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
      
-    //bind socket to port
     if( bind(s , (struct sockaddr*)&si_me, sizeof(si_me) ) == -1)
     {
         die("bind");
@@ -71,21 +70,14 @@ int main(int argc , char *argv[])
     
     int min_seq = 0;
     int isLast = 0;
-    //keep listening for data
     while(1)
     {
-        // printf("Waiting for data...");
-        // fflush(stdout);
-
         int i = 0;
-        // int filled_buf = BUFSIZE; 
         
         if ((recv_len = recvfrom(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *) &si_other, &slen)) == -1)
         {
             die("recvfrom()");
         }
-        // if(i==0)
-        //     min_seq = recv_pkt.sq_no;
         char str[10];
         sprintf(str, "%d", recv_pkt.sq_no);
         char relay[10];
@@ -95,10 +87,6 @@ int main(int argc , char *argv[])
             strcpy(relay, "RELAY2");
         printf("|SERVER    |R         |%-16s|DATA      |%-10s|SERVER    |%-10s|\n", get_time(), str, relay);    
         fprintf(log, "|SERVER    |R         |%-16s|DATA      |%-10s|SERVER    |%-10s|\n", get_time(), str, relay);    
-
-        // printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-        // printf("Data: %s\n" , recv_pkt.data);    
-        // printf("Seq No: %d\n", recv_pkt.sq_no);
 
         pkt_copy(&recv_pkt, &(buf_window[ (recv_pkt.sq_no/ PKT_SIZE) % BUFSIZE]));
         i++;
@@ -118,10 +106,7 @@ int main(int argc , char *argv[])
 
         if(recv_pkt.isLast)
         {
-            // printf("REACHED\n");
             isLast = 1;
-            // filled_buf = ((recv_pkt.sq_no - min_seq) / PKT_SIZE)+1;
-            // printf("%d\n", filled_buf);
         }    
     
         if(recv_pkt.sq_no == min_seq)
@@ -130,8 +115,6 @@ int main(int argc , char *argv[])
             while(1)
             {        
                 buf_window[(temp_seq/PKT_SIZE)%BUFSIZE].type = 2;
-                // printf("C\n");
-                // printf("%s\n", buf_window[(temp_seq/PKT_SIZE)%BUFSIZE].data);
                 fwrite(buf_window[(temp_seq/PKT_SIZE)%BUFSIZE].data, 1, buf_window[(temp_seq/PKT_SIZE)%BUFSIZE].size, fp);
 
                 if(buf_window[(temp_seq/PKT_SIZE)%BUFSIZE].sq_no + PKT_SIZE != buf_window[((temp_seq/PKT_SIZE)+1)%BUFSIZE].sq_no)
@@ -150,7 +133,6 @@ int main(int argc , char *argv[])
                 if(buf_window[k].type != 2)
                     break;
             }
-            // printf("***** %d\n", k);
             if(k==BUFSIZE)
                 break;
         }

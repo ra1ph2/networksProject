@@ -1,15 +1,16 @@
+// Akshit Khanna 2017A7PS0023P
 #include "packet.h"
 
 int main()
 {
     
     int client_socket;
-	struct sockaddr_in serverAddress;		//Note that this is the *server* address.
+	struct sockaddr_in serverAddress;	
 	memset(&serverAddress, 0, sizeof(serverAddress));
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(PORT);
 	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-	// printf("Address assigned.\n");
+	
     int connection;
 	int bytes_sent;
 	int bytes_recd;
@@ -19,11 +20,28 @@ int main()
         printf("An error occurred while creating the client socket\n");
         exit(0);
     }
+      
+    printf("The client socket %d (Channel 1) was successfully created.\n", client_socket1);       
+    connection = connect(client_socket1, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
+    if(connection < 0){
+        printf("An error occurred while connecting client to server.\n");
+        exit(0);
+    }
+    printf("Connection 1 established successfully.\n");
+
     int client_socket2 = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(client_socket2 < 0){
         printf("An error occurred while creating the client socket\n");
         exit(0);
     }
+
+    printf("The client socket %d (Channel 2) was successfully created.\n", client_socket2);       
+    connection = connect(client_socket2, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
+    if(connection < 0){
+        printf("An error occurred while connecting client to server.\n");
+        exit(0);
+    }
+    printf("Connection 2 established successfully.\n");
 
     FILE* fp = fopen("input.txt","ab");
     if(fp==NULL)
@@ -43,15 +61,7 @@ int main()
 
     if((pid = fork()) == 0 )
     {
-        
-        printf("The client socket %d (Channel 1) was successfully created.\n", client_socket1);       
-        connection = connect(client_socket1, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
-        if(connection < 0){
-            printf("An error occurred while connecting client to server.\n");
-            exit(0);
-        }
-        printf("Connection 1 established successfully.\n");
-    
+   
         sem_t *sema = sem_open(SEM_NAME, O_RDWR);
         DATA_PKT recv_pkt,send_pkt;
         while(1)
@@ -93,14 +103,12 @@ int main()
                 if(pkt_ack <= 0)
                 {
                     // Connection Timeout
-                    // printf("Connection Timeout for Packet %d.", send_pkt.sq_no/PKT_SIZE);
                     bytes_sent = send(client_socket1, &send_pkt, sizeof(send_pkt), 0);
                     if(bytes_sent != sizeof(send_pkt)){
                         printf("An error occurred while sending the message to the server.\n");
                         exit(0);
                     }
                     printf("(RE)SENT PKT: Seq No %d of size %d bytes from channel %d\n", send_pkt.sq_no, send_pkt.size, send_pkt.channel);
-                    // printf("Packet %d sent successfully.\n", send_pkt.sq_no/PKT_SIZE);     
                 }
                 else
                 {
@@ -118,19 +126,10 @@ int main()
     }
     else
     {
-
-        printf("The client socket %d (Channel 2) was successfully created.\n", client_socket2);       
-        connection = connect(client_socket2, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
-        if(connection < 0){
-            printf("An error occurred while connecting client to server.\n");
-            exit(0);
-        }
-        printf("Connection 2 established successfully.\n");
         
         DATA_PKT recv_pkt,send_pkt;
         while(1)
         {
-            // int temp = ftell(fp);
             sem_wait(sem);
             send_pkt.size = fread(send_pkt.data ,1, PKT_SIZE, fp);
             send_pkt.sq_no = ftell(fp)-send_pkt.size;

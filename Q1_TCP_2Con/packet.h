@@ -1,9 +1,10 @@
+// Akshit Khanna 2017A7PS0023P
 #include <stdio.h>  
-#include <string.h>   //strlen  
+#include <string.h>     
 #include <stdlib.h>  
 #include <errno.h>  
-#include <unistd.h>   //close  
-#include <arpa/inet.h>    //close  
+#include <unistd.h>     
+#include <arpa/inet.h>   
 #include <sys/types.h>  
 #include <sys/wait.h>
 #include <sys/stat.h>    
@@ -12,12 +13,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros  
+#include <sys/time.h>   
 #include <time.h>
      
 #define MAX_CON 2     
 #define PORT 8888
-#define PKT_SIZE 10
+#define PKT_SIZE 100
 #define PROB 10  
 #define BUFSIZE 4
 #define SEM_NAME "/sem"

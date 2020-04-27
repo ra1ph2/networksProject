@@ -1,3 +1,4 @@
+// Akshit Khanna 2017A7PS0023P
 #include <stdio.h>  
 #include <string.h>    
 #include <stdlib.h>  
@@ -18,7 +19,7 @@
 #define PORT_RELAY1 8001
 #define PORT_RELAY2 8002
 #define PORT_SERVER 8003
-#define PKT_SIZE 10
+#define PKT_SIZE 100
 #define PROB 10  
 #define BUFSIZE 4
 #define TIMEOUT 2

@@ -1,3 +1,4 @@
+// Akshit Khanna 2017A7PS0023P
 #include "packet.h"
 
 void die(char *s)
@@ -46,21 +47,17 @@ int main(int argc , char *argv[])
         strcpy(relay, "RELAY2");
         log = fopen("relay2_log.txt", "w");
     }
-    //create a UDP socket
     if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
         die("socket");
     }
 
-
-    // zero out the structure
     memset((char *) &si_me, 0, sizeof(si_me));
      
     si_me.sin_family = AF_INET;
     si_me.sin_port = htons(port_no);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-     
-    //bind socket to port
+
     if( bind(s , (struct sockaddr*)&si_me, sizeof(si_me) ) == -1)
     {
         die("bind");
@@ -73,8 +70,7 @@ int main(int argc , char *argv[])
 
     printf("|Node Name |Event Type|Timestamp       |Pkt Type  |Seq. No.  |Source    |Dest      |\n");
     fprintf(log, "|Node Name |Event Type|Timestamp       |Pkt Type  |Seq. No.  |Source    |Dest      |\n");
-     
-    
+         
     while(1)
     {
      
@@ -102,8 +98,6 @@ int main(int argc , char *argv[])
             printf("|%-10s|R         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
             fprintf(log, "|%-10s|R         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
         
-     
-            // pkt_copy(&recv_pkt, &send_pkt);
             if (sendto(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr*) &si_server, slen) == -1)
             {
                 die("sendto()");
@@ -116,8 +110,7 @@ int main(int argc , char *argv[])
         {
             printf("|%-10s|R         |%-16s|ACK       |%-10s|SERVER    |%-10s|\n", relay, get_time(), str, relay);    
             fprintf(log, "|%-10s|R         |%-16s|ACK       |%-10s|SERVER    |%-10s|\n", relay, get_time(), str, relay);    
-        
-            // pkt_copy(&recv_pkt, &send_pkt);
+
             if (sendto(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr*) &si_client, slen) == -1)
             {
                 die("sendto()");
