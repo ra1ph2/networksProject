@@ -127,27 +127,40 @@ int main(void)
             
             i++;
         }
+   
         int filled_buf = i;
+        int seq = 0;
         i = 0;
+        int last_seq = 10000;
         while(1)
         { 
-            if(i == filled_buf)
-                break;
+            // if(i == filled_buf)
+            //     break;
             FD_ZERO(&readfds);
             FD_SET(s, &readfds);
 
             timeout.tv_sec = 5;
             timeout.tv_usec = 0;
 
+            // int k;
+            // for(k =0 ; k < BUFSIZE ; k++)
+            // {
+            //     if(buf_window[k].type != 2)
+            //         break;
+            // }
+            // if(k==BUFSIZE)
+            //     break;
+
             int pkt_ack = select(s+1, &readfds, NULL, NULL, &timeout); 
             if(pkt_ack <= 0)
             {
                 // Connection Timeout
-                for(int j = 0 ; j < BUFSIZE ; j++)
+                int tp = 0;
+                while(tp < BUFSIZE)
                 {
-                    if(buf_window[j].type != 2)
+                    if(buf_window[((seq/BUFLEN)+tp)%BUFSIZE].type != 2)
                     {
-                        pkt_copy(&(buf_window[j]), &send_pkt);
+                        pkt_copy(&(buf_window[((seq/BUFLEN)+tp)%BUFSIZE]), &send_pkt);
                         printf("Connection Timeout for Packet %d.", send_pkt.sq_no/BUFLEN);
                         if((send_pkt.sq_no / BUFLEN) % 2 )
                         {
@@ -165,8 +178,9 @@ int main(void)
                                 die("sendto()");
                             }
                         }
-                        printf("Resent Packet %d.", send_pkt.sq_no/BUFLEN);           
+                        printf("Resent Packet %d.", send_pkt.sq_no/BUFLEN);
                     }
+                    tp++;
                 }
             }
             else
@@ -176,9 +190,114 @@ int main(void)
                 {
                     die("recvfrom()");
                 }
-                buf_window[(recv_pkt.sq_no - min_seq)/BUFLEN].type = 2;
-                i++; 
+
+                buf_window[(recv_pkt.sq_no/BUFLEN)%BUFSIZE].type = 2;
                 printf("Acknowlegement for packet %d received.\n", recv_pkt.sq_no/BUFLEN);
+
+                // if(recv_pkt.sq_no == last_seq)
+                //     break;
+
+                if(recv_pkt.sq_no == seq)
+                {
+                    int tp = 0;
+                    while(tp++ < BUFSIZE)
+                    {
+                        if(buf_window[((seq / BUFLEN)+(tp-1))%BUFSIZE].type != 2)
+                        {
+                            seq = seq + (tp-1)*BUFLEN;
+                            break;
+                        }
+                        
+                        if(tp == BUFSIZE)
+                        {
+                            seq = seq + tp*BUFLEN;   
+                        }    
+                    }
+                    if(seq > last_seq)
+                        break;
+                    printf("NEW SEQ ***** %d\n", seq);
+                    if((send_pkt.size = fread(send_pkt.data, 1, BUFLEN, fp)))
+                    {
+                        send_pkt.data[send_pkt.size] = '\0';
+                        printf("DEBUG DATA: %s\n", send_pkt.data);
+                        send_pkt.sq_no = ftell(fp)- send_pkt.size;
+                        printf("SEQ NO: %d\n", send_pkt.sq_no);
+                        // if(i==0)
+                        //     min_seq = send_pkt.sq_no;
+                        send_pkt.type = 0;
+                        if(send_pkt.sq_no + BUFLEN < filesize)
+                        {
+                            send_pkt.isLast = 0;
+                        }
+                        else
+                        {
+                            printf("XXXXXXXX\n");
+                            last_seq = send_pkt.sq_no;
+                            send_pkt.isLast = 1;
+                        }
+                    }
+                    else
+                        continue;
+
+                    tp = BUFSIZE - (send_pkt.sq_no - seq)/BUFLEN;
+                    while(tp--)
+                    {
+                        if((send_pkt.sq_no / BUFLEN) % 2 )
+                        {
+                            // ODD CASE
+                            printf("A\n");
+                            if (sendto(s, &send_pkt, sizeof(send_pkt) , 0 , (struct sockaddr *) &si_relay1, slen)==-1)
+                            {
+                                die("sendto()");
+                            }    
+                        }
+                        else
+                        {
+                            // EVEN CASE
+                            printf("B\n");
+                            if (sendto(s, &send_pkt, sizeof(send_pkt), 0 , (struct sockaddr *) &si_relay2, slen)==-1)
+                            {
+                                die("sendto()");
+                            }
+                        }
+                        pkt_copy(&send_pkt, &(buf_window[(send_pkt.sq_no/BUFLEN)%BUFSIZE]));
+                        if(tp == 0)
+                            break;
+                        if((send_pkt.size = fread(send_pkt.data, 1, BUFLEN, fp)))
+                        {
+                            send_pkt.data[send_pkt.size] = '\0';
+                            printf("DEBUG DATA: %s\n", send_pkt.data);
+                            send_pkt.sq_no = ftell(fp)- send_pkt.size;
+                            printf("SEQ NO: %d\n", send_pkt.sq_no);
+                            // if(i==0)
+                            //     min_seq = send_pkt.sq_no;
+                            send_pkt.type = 0;
+                            if(send_pkt.sq_no + BUFLEN < filesize)
+                            {
+                                send_pkt.isLast = 0;
+                            }
+                            else
+                            {
+                                printf("XXXXXXXX\n");
+                                last_seq = send_pkt.sq_no;
+                                send_pkt.isLast = 1;
+                            }
+                        }
+                        else
+                            break;
+                    }
+                }
+                
+                // i++; 
+
+                // int k;
+                // for(k =0 ; k < BUFSIZE ; k++)
+                // {
+                //     if(buf_window[i].type != 2)
+                //         break;
+                // }
+                // if(k==BUFSIZE)
+                //     break;
             }
         }
 
