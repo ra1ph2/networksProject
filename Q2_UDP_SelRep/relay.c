@@ -1,36 +1,26 @@
-/*  Simple udp server */
-#include <stdio.h>  
-#include <string.h>   //strlen  
-#include <stdlib.h>  
-#include <errno.h>  
-#include <time.h>
-#include <unistd.h>   //close  
-#include <arpa/inet.h>    //close  
-#include <sys/types.h>  
-#include <sys/socket.h>  
-#include <netinet/in.h>  
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros  
-          
-#define PORT1 8001
-#define PORT2 8002
-#define PORT_SERVER 8003
-#define BUFLEN 10
-#define PROB 30  
-#define BUFSIZE 4
-#define DELAY 1
- 
-typedef struct packet{
-    int size;
-    int sq_no;
-    int type; // 0 :- DATA  , 1 :- ACK
-    int isLast; // 1 :- Last Packet
-    char data[BUFLEN+1];
-}DATA_PKT;
+#include "packet.h"
 
 void die(char *s)
 {
     perror(s);
     exit(1);
+}
+
+char * get_time()
+{
+    char *str = (char*) malloc(sizeof(char)*16);
+    int rc;
+    time_t cur;
+    struct tm* timeptr;
+    struct timeval tv;
+    cur = time(NULL);
+    timeptr = localtime(&cur);
+    gettimeofday(&tv,NULL);
+    rc = strftime(str, 16, "%H:%M:%S", timeptr);
+    char ms[8];
+    sprintf(ms,".%06ld",tv.tv_usec);
+    strcat(str,ms);
+    return str;
 }
  
 int main(int argc , char *argv[])
@@ -42,17 +32,27 @@ int main(int argc , char *argv[])
     fd_set readfds;   
     int port_no;
 
+    FILE *log;
+    char relay[10];
     if(!strcmp(argv[1], "1"))
-        port_no = PORT1;
+    {
+        port_no = PORT_RELAY1;
+        strcpy(relay, "RELAY1");
+        log = fopen("relay1_log.txt", "w");
+    }
     else
-        port_no = PORT2;
-
+    {
+        port_no = PORT_RELAY2;
+        strcpy(relay, "RELAY2");
+        log = fopen("relay2_log.txt", "w");
+    }
     //create a UDP socket
     if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
         die("socket");
     }
-     
+
+
     // zero out the structure
     memset((char *) &si_me, 0, sizeof(si_me));
      
@@ -69,24 +69,29 @@ int main(int argc , char *argv[])
     memset((char *) &si_server, 0, sizeof(si_server));
     si_server.sin_family = AF_INET;
     si_server.sin_port = htons(PORT_SERVER);
-    si_server.sin_addr.s_addr = inet_addr("127.0.0.3");
+    si_server.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    printf("|Node Name |Event Type|Timestamp       |Pkt Type  |Seq. No.  |Source    |Dest      |\n");
+    fprintf(log, "|Node Name |Event Type|Timestamp       |Pkt Type  |Seq. No.  |Source    |Dest      |\n");
      
-    //keep listening for data
+    
     while(1)
     {
-        printf("Waiting for data...");
-        fflush(stdout);
-         
-        //try to receive some data, this is a blocking call
+     
         if ((recv_len = recvfrom(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *) &si_other, &slen)) == -1)
         {
             die("recvfrom()");
         }
 
+        char str[10];
+        sprintf(str, "%d", recv_pkt.sq_no);
         if(recv_pkt.type == 0)
         {
-            if(rand() % (100 / PROB) == 0)
+            int drop = (rand()%100)+1;
+            if(drop <= PROB)
             {
+                printf("|%-10s|D         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
+                fprintf(log, "|%-10s|D         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
                 continue;
             }
 
@@ -94,29 +99,38 @@ int main(int argc , char *argv[])
             int delay = rand()%3;
             usleep(delay);
 
-            printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-            printf("Data: %s\n" , recv_pkt.data);    
-            printf("Seq No: %d\n", recv_pkt.sq_no);
-
+            printf("|%-10s|R         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
+            fprintf(log, "|%-10s|R         |%-16s|DATA      |%-10s|CLIENT    |%-10s|\n", relay, get_time(), str, relay);    
+        
+     
             // pkt_copy(&recv_pkt, &send_pkt);
             if (sendto(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr*) &si_server, slen) == -1)
             {
                 die("sendto()");
             }    
+            printf("|%-10s|S         |%-16s|DATA      |%-10s|%-10s|SERVER    |\n", relay, get_time(), str, relay);    
+            fprintf(log, "|%-10s|S         |%-16s|DATA      |%-10s|%-10s|SERVER    |\n", relay, get_time(), str, relay);    
+        
         }
         else
         {
-            printf("Received Ack packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-            // printf("Data: %s\n" , recv_pkt.data);    
-            printf("Seq No: %d\n", recv_pkt.sq_no);
-
+            printf("|%-10s|R         |%-16s|ACK       |%-10s|SERVER    |%-10s|\n", relay, get_time(), str, relay);    
+            fprintf(log, "|%-10s|R         |%-16s|ACK       |%-10s|SERVER    |%-10s|\n", relay, get_time(), str, relay);    
+        
             // pkt_copy(&recv_pkt, &send_pkt);
             if (sendto(s, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr*) &si_client, slen) == -1)
             {
                 die("sendto()");
             }
+
+            printf("|%-10s|S         |%-16s|ACK       |%-10s|%-10s|CLIENT    |\n", relay, get_time(), str, relay);    
+            fprintf(log, "|%-10s|S         |%-16s|ACK       |%-10s|%-10s|CLIENT    |\n", relay, get_time(), str, relay);    
+        
         }
+
+        fflush(log);
     }
+    fclose(log);
     close(s);
     return 0;
 }
