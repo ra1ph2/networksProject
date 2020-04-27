@@ -1,36 +1,4 @@
-#include <stdio.h>  
-#include <string.h>   //strlen  
-#include <stdlib.h>  
-#include <errno.h>  
-#include <unistd.h>   //close  
-#include <arpa/inet.h>    //close  
-#include <sys/types.h>  
-#include <sys/wait.h>
-#include <sys/stat.h>    
-#include <sys/socket.h>  
-#include <netinet/in.h>  
-#include <fcntl.h>
-#include <unistd.h>
-#include <semaphore.h>
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros  
-     
-#define MAX_CON 2     
-#define PORT 8888
-#define BUFLEN 10
-#define PROB 10  
-#define BUFSIZE 4
-#define SEM_NAME "/sem"
-#define TIMEOUT 2
-
-typedef struct packet{
-    int size;
-    int sq_no;
-    int type; // 0 :- DATA  , 1 :- ACK
-    int isLast; // 1 :- Last Packet
-    int channel;
-    char data[BUFLEN+1];
-}DATA_PKT;
-
+#include "packet.h"
 
 int main()
 {
@@ -88,36 +56,23 @@ int main()
         DATA_PKT recv_pkt,send_pkt;
         while(1)
         {
-            // int temp = ftell(fp);
             sem_wait(sema);
-            send_pkt.size = fread(send_pkt.data ,1, BUFLEN, fp);
+            send_pkt.size = fread(send_pkt.data ,1, PKT_SIZE, fp);
             send_pkt.sq_no = ftell(fp)-send_pkt.size;
             sem_post(sema);
-            // if(send_pkt.sq_no - temp != 0)
-            //     send_pkt.sq_no -= BUFLEN; 
             if(send_pkt.size == 0)
                 break;
-            // printf("AAAAAAAAAAA\n");
             send_pkt.data[send_pkt.size] = '\0';
             send_pkt.channel = 1;
-            // printf("A:- Debug Data : %s\n", send_pkt.data);
-            // printf("A:- SEQ NO : %d\n", send_pkt.sq_no);
-            if(send_pkt.sq_no + BUFLEN < filesize)
+            if(send_pkt.sq_no + PKT_SIZE < filesize)
             {
                 send_pkt.isLast = 0;
             }
             else
             {
-                // printf("XXXXXXXX\n");
                 send_pkt.isLast = 1;
             }
             send_pkt.type = 0;
-
-            // FD_ZERO(&readfds);
-            // FD_SET(client_socket1, &readfds);
-
-            // timeout.tv_sec = 2;
-            // timeout.tv_usec = 0;
 
             bytes_sent = send(client_socket1, &send_pkt, sizeof(send_pkt), 0);
             if(bytes_sent != sizeof(send_pkt)){
@@ -138,14 +93,14 @@ int main()
                 if(pkt_ack <= 0)
                 {
                     // Connection Timeout
-                    // printf("Connection Timeout for Packet %d.", send_pkt.sq_no/BUFLEN);
+                    // printf("Connection Timeout for Packet %d.", send_pkt.sq_no/PKT_SIZE);
                     bytes_sent = send(client_socket1, &send_pkt, sizeof(send_pkt), 0);
                     if(bytes_sent != sizeof(send_pkt)){
                         printf("An error occurred while sending the message to the server.\n");
                         exit(0);
                     }
                     printf("(RE)SENT PKT: Seq No %d of size %d bytes from channel %d\n", send_pkt.sq_no, send_pkt.size, send_pkt.channel);
-                    // printf("Packet %d sent successfully.\n", send_pkt.sq_no/BUFLEN);     
+                    // printf("Packet %d sent successfully.\n", send_pkt.sq_no/PKT_SIZE);     
                 }
                 else
                 {
@@ -163,13 +118,6 @@ int main()
     }
     else
     {
-        // client_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-        // if(client_socket < 0){
-        //     printf("An error occurred while creating the client socket\n");
-        //     exit(0);
-        // }
-
-        // sleep(1);
 
         printf("The client socket %d (Channel 2) was successfully created.\n", client_socket2);       
         connection = connect(client_socket2, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
@@ -184,34 +132,22 @@ int main()
         {
             // int temp = ftell(fp);
             sem_wait(sem);
-            send_pkt.size = fread(send_pkt.data ,1, BUFLEN, fp);
+            send_pkt.size = fread(send_pkt.data ,1, PKT_SIZE, fp);
             send_pkt.sq_no = ftell(fp)-send_pkt.size;
             sem_post(sem);
-            // if(send_pkt.sq_no - temp != 0)
-            //     send_pkt.sq_no -= BUFLEN; 
             if(send_pkt.size == 0)
                 break;
-            // printf("BBBBBBBBBBB\n");
             send_pkt.data[send_pkt.size] = '\0';
             send_pkt.channel = 2;
-            // printf("B:- Debug Data : %s\n", send_pkt.data);
-            // printf("B:- SEQ NO : %d\n", send_pkt.sq_no);
-            if(send_pkt.sq_no + BUFLEN < filesize)
+            if(send_pkt.sq_no + PKT_SIZE < filesize)
             {
                 send_pkt.isLast = 0;
             }
             else
             {
-                // printf("XXXXXXXX\n");
                 send_pkt.isLast = 1;
             }
             send_pkt.type = 0;
-
-            // FD_ZERO(&readfds);
-            // FD_SET(client_socket2, &readfds);
-
-            // timeout.tv_sec = 2;
-            // timeout.tv_usec = 0;
 
             bytes_sent = send(client_socket2, &send_pkt, sizeof(send_pkt), 0);
             if(bytes_sent != sizeof(send_pkt)){
@@ -233,15 +169,12 @@ int main()
                 if(pkt_ack <= 0)
                 {
                     // Connection Timeout
-                    // printf("Connection Timeout for Packet %d.\n", send_pkt.sq_no/BUFLEN);
                     bytes_sent = send(client_socket2, &send_pkt, sizeof(send_pkt), 0);
                     if(bytes_sent != sizeof(send_pkt)){
                         printf("An error occurred while sending the message to the server.\n");
                         exit(0);
                     }
                     printf("(RE)SENT PKT: Seq No %d of size %d bytes from channel %d\n", send_pkt.sq_no, send_pkt.size, send_pkt.channel);
-            
-                    // printf("Packet %d sent successfully.\n", send_pkt.sq_no/BUFLEN);     
                 }
                 else
                 {

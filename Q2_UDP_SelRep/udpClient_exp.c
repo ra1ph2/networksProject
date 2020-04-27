@@ -129,7 +129,7 @@ int main(void)
             FD_ZERO(&readfds);
             FD_SET(s, &readfds);
 
-            timeout.tv_sec = 2;
+            timeout.tv_sec = TIMEOUT;
             timeout.tv_usec = 0;
 
             // int k;

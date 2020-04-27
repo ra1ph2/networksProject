@@ -1,9 +1,9 @@
 #include <stdio.h>  
-#include <string.h>    
+#include <string.h>   //strlen  
 #include <stdlib.h>  
 #include <errno.h>  
-#include <unistd.h>     
-#include <arpa/inet.h>   
+#include <unistd.h>   //close  
+#include <arpa/inet.h>    //close  
 #include <sys/types.h>  
 #include <sys/wait.h>
 #include <sys/stat.h>    
@@ -12,15 +12,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
-#include <sys/time.h>   
+#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros  
 #include <time.h>
      
-#define PORT_RELAY1 8001
-#define PORT_RELAY2 8002
-#define PORT_SERVER 8003
+#define MAX_CON 2     
+#define PORT 8888
 #define PKT_SIZE 10
 #define PROB 10  
 #define BUFSIZE 4
+#define SEM_NAME "/sem"
 #define TIMEOUT 2
 
 typedef struct packet{
@@ -28,5 +28,6 @@ typedef struct packet{
     int sq_no;
     int type; // 0 :- DATA  , 1 :- ACK
     int isLast; // 1 :- Last Packet
+    int channel;
     char data[PKT_SIZE+1];
 }DATA_PKT;

@@ -1,32 +1,4 @@
-
-//Example code: A simple server side code, which echos back the received message. 
-//Handle multiple socket connections with select and fd_set on Linux  
-#include <stdio.h>  
-#include <string.h>   //strlen  
-#include <stdlib.h>  
-#include <errno.h>  
-#include <time.h>
-#include <unistd.h>   //close  
-#include <arpa/inet.h>    //close  
-#include <sys/types.h>  
-#include <sys/socket.h>  
-#include <netinet/in.h>  
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros  
-     
-#define MAX_CON 2     
-#define PORT 8888
-#define BUFLEN 10
-#define PROB 10  
-#define BUFSIZE 4
-
-typedef struct packet{
-    int size;
-    int sq_no;
-    int type; // 0 :- DATA  , 1 :- ACK
-    int isLast; // 1 :- Last Packet
-    int channel;
-    char data[BUFLEN+1];
-}DATA_PKT;
+#include "packet.h"
 
 void pkt_copy(DATA_PKT *pkt1, DATA_PKT *pkt2)
 {
@@ -143,19 +115,7 @@ int main(int argc , char *argv[])
                 perror("accept");   
                 exit(EXIT_FAILURE);   
             }   
-             
-            //inform user of socket number - used in send and receive commands  
-            // printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs 
-            //       (address.sin_port));   
-           
-            //send new connection greeting message  
-            // if( send(new_socket, message, strlen(message), 0) != strlen(message) )   
-            // {   
-            //     perror("send");   
-            // }   
-                 
-            // puts("Welcome message sent successfully");   
-                 
+            
             //add new socket to array of sockets  
             for (i = 0; i < max_clients; i++)   
             {   
@@ -203,30 +163,28 @@ int main(int argc , char *argv[])
                     }
                 }   
                      
-                //Echo back the message that came in  
                 else 
                 {   
 
-                    // printf("Debug Data : %s\n",recv_pkt.data);
-                    // printf("SQ NO : %d\n",recv_pkt.sq_no);
                     // Drop packet randomly with 10 percent probabilty  
-                    if(rand() % (100 / PROB) == 0)
+                    int drop = (rand()%100)+1;
+                    if(drop <= PROB)
                     {
-                        printf("DRP PKT: Seq No %d of size %d bytes from channel %d\n", recv_pkt.sq_no, recv_pkt.size,recv_pkt.channel);    
+                        printf("DROP PKT: Seq No %d of size %d bytes from channel %d\n", recv_pkt.sq_no, recv_pkt.size,recv_pkt.channel);    
                         continue;
                     }
                     printf("RCVD PKT: Seq No %d of size %d bytes from channel %d\n", recv_pkt.sq_no, recv_pkt.size,recv_pkt.channel);
                     if(recv_pkt.sq_no == min_seq)
                     {
-                        // min_seq = recv_pkt.sq_no + BUFLEN;
+                        // min_seq = recv_pkt.sq_no + PKT_SIZE;
                         pkt_copy(&recv_pkt, &(buf_window[0]) ); // Structure Equivalence
-                        for(int i = 0; i <= (max_seq-min_seq)/BUFLEN ; i++)
+                        for(int i = 0; i <= (max_seq-min_seq)/PKT_SIZE ; i++)
                         {
                             // printf("Package Data : %s\n",buf_window[i].data);
-                            // printf("Packet %d received at server\n",buf_window[i].sq_no/BUFLEN);
+                            // printf("Packet %d received at server\n",buf_window[i].sq_no/PKT_SIZE);
                             fprintf(fp_out, "%s", buf_window[i].data);
                         }
-                        min_seq = max_seq + BUFLEN;
+                        min_seq = max_seq + PKT_SIZE;
                         max_seq = min_seq;
 
                         send_pkt.type = 1;
@@ -238,10 +196,10 @@ int main(int argc , char *argv[])
                     }   
                     else
                     {
-                        if((recv_pkt.sq_no - min_seq)/BUFLEN < BUFSIZE )
+                        if((recv_pkt.sq_no - min_seq)/PKT_SIZE < BUFSIZE )
                         {
                             max_seq = recv_pkt.sq_no;
-                            pkt_copy(&recv_pkt, &(buf_window[(recv_pkt.sq_no - min_seq)/BUFLEN]) ); // Structure Equivalence
+                            pkt_copy(&recv_pkt, &(buf_window[(recv_pkt.sq_no - min_seq)/PKT_SIZE]) ); // Structure Equivalence
 
                             send_pkt.type = 1;
                             send_pkt.sq_no = recv_pkt.sq_no;
